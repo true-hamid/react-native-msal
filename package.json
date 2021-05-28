@@ -15,6 +15,7 @@
     "!**/__mocks__",
     "android",
     "ios",
+    "windows",
     "reactnativemsal.podspec",
     "!lib/typescript/example"
   ],
