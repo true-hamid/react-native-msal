@@ -141,7 +141,7 @@ namespace ReactNativeMsal
     }
 
     [ReactMethod("signout")]
-    public static async void Signout(IReactPromise<bool> promise)
+    public async void Signout(IReactPromise<bool> promise)
     {
       try
       {
