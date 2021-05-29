@@ -121,7 +121,7 @@
     <Compile Include="Data\MSALAccount.cs" />
     <Compile Include="Data\MSALConfiguration.cs" />
     <Compile Include="Data\MSALResult.cs" />
-    <Compile Include="Features\Interactive.cs" />
+    <Compile Include="AquireToken.cs" />
     <Compile Include="Utils\Helpers.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ReactNativeModule.cs" />
