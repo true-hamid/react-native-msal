@@ -1,6 +1,8 @@
+using Microsoft.Identity.Client;
 using Microsoft.ReactNative.Managed;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace ReactNativeMsal
 {
@@ -21,6 +23,11 @@ namespace ReactNativeMsal
         }
       }
       return list;
+    }
+
+    public static async Task<IAccount> GetMSALAccount(string indentifier, IPublicClientApplication PublicClientApp)
+    {
+      return await PublicClientApp.GetAccountAsync(indentifier);
     }
   }
 }

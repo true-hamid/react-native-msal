@@ -12,49 +12,43 @@ namespace ReactNativeMsal
   class AquireToken
   {
     MSALConfiguration mConfig;
-    // The MSAL Public client app
-    private static IPublicClientApplication mPublicClientApp;
-    private static AuthenticationResult mAuthResult;
 
 
-    public AquireToken(MSALConfiguration config, IPublicClientApplication PublicClientApp, AuthenticationResult AuthResult)
+    public AquireToken(MSALConfiguration config)
     {
       mConfig = config;
-      mPublicClientApp = PublicClientApp;
-      mAuthResult = AuthResult;
     }
 
-    bool mSilent;
-    public async Task<MSALResult> SignIn(JSValue parameters, bool silent)
+    public async Task<MSALResult> SignIn(JSValue parameters, bool silent, MSALApplication MsalApplication)
     {
       try
       {
         string authority = parameters["authority"].AsString();
         List<string> scopes = Helpers.JSValueToListofStrings(parameters, "scopes");
-        return await SignInUserAndGetTokenUsingMSAL(authority, scopes, silent);
+        return await SignInUserAndGetTokenUsingMSAL(authority, scopes, silent, MsalApplication);
       }
       catch (MsalException msalEx)
       {
         string title = "Error Acquiring Token: ";
         MSALResult error = new MSALResult();
-        error.Error = true;
-        error.ErrorMessage = title + msalEx;
+        error.error = true;
+        error.errorMessage = title + msalEx;
         return error;
       }
       catch (Exception ex)
       {
         string title = "Unknown Error: ";
         MSALResult error = new MSALResult();
-        error.Error = true;
-        error.ErrorMessage = title + ex;
+        error.error = true;
+        error.errorMessage = title + ex;
         return error;
       }
     }
 
-    private async Task<MSALResult> SignInUserAndGetTokenUsingMSAL(string authority, List<string> scopes, bool silent)
+    private async Task<MSALResult> SignInUserAndGetTokenUsingMSAL(string authority, List<string> scopes, bool silent, MSALApplication MsalApplication)
     {
-      // Initialize the MSAL library by building a public client application
-      mPublicClientApp = PublicClientApplicationBuilder.Create(mConfig.ClientId)
+      // Initialize the MSAL library by building a public client MsalApplication
+      MsalApplication.PublicClientApp = PublicClientApplicationBuilder.Create(mConfig.ClientId)
           .WithAuthority(authority)
           .WithUseCorporateNetwork(false)
           .WithRedirectUri(mConfig.RedirectUri)
@@ -64,14 +58,14 @@ namespace ReactNativeMsal
            }, LogLevel.Warning, enablePiiLogging: false, enableDefaultPlatformLogging: true)
           .Build();
 
-      IEnumerable<IAccount> accounts = await mPublicClientApp.GetAccountsAsync().ConfigureAwait(false);
+      IEnumerable<IAccount> accounts = await MsalApplication.PublicClientApp.GetAccountsAsync().ConfigureAwait(false);
       IAccount firstAccount = accounts.FirstOrDefault();
 
       if (silent)
       {
         try
         {
-          mAuthResult = await mPublicClientApp.AcquireTokenSilent(scopes, firstAccount)
+          MsalApplication.AuthResult = await MsalApplication.PublicClientApp.AcquireTokenSilent(scopes, firstAccount)
                                             .ExecuteAsync();
         }
         catch (MsalUiRequiredException ex)
@@ -79,13 +73,14 @@ namespace ReactNativeMsal
           // A MsalUiRequiredException happened on AcquireTokenSilentAsync. This indicates you need to call AcquireTokenAsync to acquire a token
           Debug.WriteLine($"MsalUiRequiredException: {ex.Message}");
 
-          mAuthResult = await mPublicClientApp.AcquireTokenInteractive(scopes)
+          MsalApplication.AuthResult = await MsalApplication.PublicClientApp.AcquireTokenInteractive(scopes)
                                             .ExecuteAsync()
                                             .ConfigureAwait(false);
         }
-      } else
+      }
+      else
       {
-        mAuthResult = await mPublicClientApp.AcquireTokenInteractive(scopes)
+        MsalApplication.AuthResult = await MsalApplication.PublicClientApp.AcquireTokenInteractive(scopes)
                                            .ExecuteAsync()
                                            .ConfigureAwait(false);
       }
@@ -93,20 +88,20 @@ namespace ReactNativeMsal
 
       // Setup account object
       MSALAccount account = new MSALAccount();
-      account.Environment = mAuthResult.Account.Environment;
-      account.Identifier = mAuthResult.Account.HomeAccountId.Identifier;
-      account.TenantId = mAuthResult.Account.HomeAccountId.TenantId;
-      account.Username = mAuthResult.Account.Username;
+      account.environment = MsalApplication.AuthResult.Account.Environment;
+      account.identifier = MsalApplication.AuthResult.Account.HomeAccountId.Identifier;
+      account.tenantId = MsalApplication.AuthResult.Account.HomeAccountId.TenantId;
+      account.username = MsalApplication.AuthResult.Account.Username;
 
       // Setup Response object
       MSALResult result = new MSALResult();
-      result.AccessToken = mAuthResult.AccessToken;
-      result.Account = account;
-      result.ExpiresOn = mAuthResult.ExpiresOn;
-      result.IdToken = mAuthResult.IdToken;
-      result.Scopes = mAuthResult.Scopes;
-      result.TenantId = mAuthResult.TenantId;
-      result.ErrorMessage = "";
+      result.accessToken = MsalApplication.AuthResult.AccessToken;
+      result.account = account;
+      result.expiresOn = MsalApplication.AuthResult.ExpiresOn.ToString();
+      result.idToken = MsalApplication.AuthResult.IdToken;
+      result.scopes = MsalApplication.AuthResult.Scopes;
+      result.tenantId = MsalApplication.AuthResult.TenantId;
+      result.errorMessage = "";
 
       return result;
     }

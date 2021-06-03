@@ -13,18 +13,10 @@ namespace ReactNativeMsal
   [ReactModule("RNMSAL")]
   internal sealed class ReactNativeModule
   {
-    private ReactContext _reactContext;
-
-    [ReactInitializer]
-    public void Initialize(ReactContext reactContext)
-    {
-      _reactContext = reactContext;
-    }
 
     public MSALConfiguration mSALConfiguration = new MSALConfiguration();
     // The MSAL Public client app
-    private static IPublicClientApplication PublicClientApp;
-    private static AuthenticationResult authResult;
+    public MSALApplication MsalApplication;
 
     [ReactMethod("createPublicClientApplication")]
     public void CreatePublicClientApplication(JSValue parameters)
@@ -33,19 +25,22 @@ namespace ReactNativeMsal
       mSALConfiguration.Authority = parameters["authority"].IsNull ? null : parameters["authority"].AsString();
       mSALConfiguration.RedirectUri = parameters["redirectUri"].IsNull ? null : parameters["redirectUri"].AsString();
       mSALConfiguration.KnownAuthorities = Helpers.JSValueToListofStrings(parameters, "knownAuthorities");
+
+      MsalApplication = new MSALApplication();
+
     }
 
 
     [ReactMethod("acquireToken")]
     public async void AcquireToken(JSValue parameters, IReactPromise<MSALResult> promise)
     {
-      AquireToken aquireToken = new AquireToken(mSALConfiguration, PublicClientApp, authResult);
-      MSALResult result = await aquireToken.SignIn(parameters, false);
+      AquireToken aquireToken = new AquireToken(mSALConfiguration);
+      MSALResult result = await aquireToken.SignIn(parameters, false, MsalApplication);
 
-      if (result.Error == true)
+      if (result.error == true)
       {
         ReactError error = new ReactError();
-        error.Message = result.ErrorMessage;
+        error.Message = result.errorMessage;
         promise.Reject(error);
       }
       else
@@ -57,13 +52,13 @@ namespace ReactNativeMsal
     [ReactMethod("acquireTokenSilent")]
     public async void AcquireTokenSilent(JSValue parameters, IReactPromise<MSALResult> promise)
     {
-      AquireToken aquireToken = new AquireToken(mSALConfiguration, PublicClientApp, authResult);
-      MSALResult result = await aquireToken.SignIn(parameters, true);
+      AquireToken aquireToken = new AquireToken(mSALConfiguration);
+      MSALResult result = await aquireToken.SignIn(parameters, true, MsalApplication);
 
-      if (result.Error == true)
+      if (result.error == true)
       {
         ReactError error = new ReactError();
-        error.Message = result.ErrorMessage;
+        error.Message = result.errorMessage;
         promise.Reject(error);
       }
       else
@@ -75,7 +70,7 @@ namespace ReactNativeMsal
     [ReactMethod("getAccounts")]
     public async void GetAccounts(IReactPromise<List<MSALAccount>> promise)
     {
-      IEnumerable<IAccount> accounts = await PublicClientApp.GetAccountsAsync();
+      IEnumerable<IAccount> accounts = await MsalApplication.PublicClientApp.GetAccountsAsync();
 
       var list = new List<MSALAccount>();
       if (accounts != null)
@@ -84,10 +79,10 @@ namespace ReactNativeMsal
         {
           MSALAccount mSALAccount = new MSALAccount();
 
-          mSALAccount.Environment = account.Environment;
-          mSALAccount.TenantId = account.HomeAccountId.TenantId;
-          mSALAccount.Identifier = account.HomeAccountId.Identifier;
-          mSALAccount.Username = account.Username;
+          mSALAccount.environment = account.Environment;
+          mSALAccount.tenantId = account.HomeAccountId.TenantId;
+          mSALAccount.identifier = account.HomeAccountId.Identifier;
+          mSALAccount.username = account.Username;
 
           list.Add(mSALAccount);
         }
@@ -101,16 +96,17 @@ namespace ReactNativeMsal
     [ReactMethod("getAccount")]
     public async void GetAccount(string accountIdentifier, IReactPromise<MSALAccount> promise)
     {
-      IAccount account = await PublicClientApp.GetAccountAsync(accountIdentifier);
+
+      IAccount account = await Helpers.GetMSALAccount(accountIdentifier, MsalApplication.PublicClientApp);
 
       if (account != null)
       {
         MSALAccount mSALAccount = new MSALAccount();
 
-        mSALAccount.Environment = account.Environment;
-        mSALAccount.TenantId = account.HomeAccountId.TenantId;
-        mSALAccount.Identifier = account.HomeAccountId.Identifier;
-        mSALAccount.Username = account.Username;
+        mSALAccount.environment = account.Environment;
+        mSALAccount.tenantId = account.HomeAccountId.TenantId;
+        mSALAccount.identifier = account.HomeAccountId.Identifier;
+        mSALAccount.username = account.Username;
 
         promise.Resolve(mSALAccount);
       }
@@ -123,11 +119,17 @@ namespace ReactNativeMsal
     }
 
     [ReactMethod("removeAccount")]
-    public async void RemoveAccount(IAccount account, IReactPromise<bool> promise)
+    public async void RemoveAccount(string identifier, IReactPromise<bool> promise)
     {
       try
       {
-        await PublicClientApp.RemoveAsync(account);
+        //string identifier = account["account"].IsNull ? null : account["account"].AsString();
+
+        //JSValue maccount = account["account"].IsNull ? "" : account.AsObject()["account"];
+        //string identifier = maccount["identifier"].AsString();
+        IAccount msalAccount = await Helpers.GetMSALAccount(identifier, MsalApplication.PublicClientApp);
+
+        await MsalApplication.PublicClientApp.RemoveAsync(msalAccount).ConfigureAwait(false);
 
         promise.Resolve(true);
       }
@@ -138,25 +140,6 @@ namespace ReactNativeMsal
         promise.Reject(error);
       }
 
-    }
-
-    [ReactMethod("signout")]
-    public async void Signout(IReactPromise<bool> promise)
-    {
-      try
-      {
-        IEnumerable<IAccount> accounts = await PublicClientApp.GetAccountsAsync().ConfigureAwait(false);
-        IAccount firstAccount = accounts.FirstOrDefault();
-        await PublicClientApp.RemoveAsync(firstAccount).ConfigureAwait(false);
-        promise.Resolve(true);
-
-      }
-      catch (Exception msalEx)
-      {
-        ReactError error = new ReactError();
-        error.Message = "Error Signing out: " + msalEx;
-        promise.Reject(error);
-      }
     }
   }
 }

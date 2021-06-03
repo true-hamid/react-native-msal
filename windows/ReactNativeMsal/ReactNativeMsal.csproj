@@ -119,6 +119,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Data\MSALAccount.cs" />
+    <Compile Include="Data\MSALApplication.cs" />
     <Compile Include="Data\MSALConfiguration.cs" />
     <Compile Include="Data\MSALResult.cs" />
     <Compile Include="AquireToken.cs" />
